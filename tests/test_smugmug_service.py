@@ -8,6 +8,7 @@ from smugmug_photo_selector.smugmug_service import SmugMugService
 
 EXPECTED_URLS_COUNT = 4
 MIN_URLS_PER_PHOTO = 2
+EXPECTED_TOTAL_PHOTOS = 3
 
 
 @pytest.fixture
@@ -195,3 +196,169 @@ def test_service_initialization_without_credentials():
             ValueError, match='Credenciais OAuth não configuradas'
         ):
             SmugMugService()
+
+
+@pytest.mark.asyncio
+async def test_get_all_photos_by_id_success(service):
+    """Teste de sucesso para get_all_photos_by_id"""
+    album_id = 'ABC123'
+
+    mock_album_data = {
+        'Response': {
+            'Album': {
+                'AlbumKey': 'ABC123',
+                'Title': 'Test Album by ID',
+                'ImageCount': 3,
+            }
+        }
+    }
+
+    mock_images_data = {
+        'Response': {
+            'AlbumImage': [
+                {
+                    'ImageKey': 'img1',
+                    'Title': 'Photo 1',
+                    'ThumbnailUrl': 'https://photos.smugmug.com/img1/Th/photo1-Th.jpg',
+                    'LargeUrl': 'https://photos.smugmug.com/img1/L/photo1-L.jpg',
+                },
+                {
+                    'ImageKey': 'img2',
+                    'Title': 'Photo 2',
+                    'ThumbnailUrl': 'https://photos.smugmug.com/img2/Th/photo2-Th.jpg',
+                    'MediumUrl': 'https://photos.smugmug.com/img2/M/photo2-M.jpg',
+                },
+                {
+                    'ImageKey': 'img3',
+                    'Title': 'Photo 3',
+                    'ThumbnailUrl': 'https://photos.smugmug.com/img3/Th/photo3-Th.jpg',
+                },
+            ]
+        }
+    }
+
+    def mock_make_request(url, params=None):
+        if 'album/ABC123!images' in url:
+            return mock_images_data
+        return mock_album_data
+
+    with patch.object(service, '_make_request', side_effect=mock_make_request):
+        result = await service.get_all_photos_by_id(album_id)
+
+        assert isinstance(result, AlbumResponse)
+        assert result.album_title == 'Test Album by ID'
+        assert result.album_id == 'ABC123'
+        assert result.total_photos == EXPECTED_TOTAL_PHOTOS
+        assert len(result.photos) == EXPECTED_TOTAL_PHOTOS
+
+        # Verificar primeira foto
+        first_photo = result.photos[0]
+        assert first_photo.id == 'img1'
+        assert first_photo.title == 'Photo 1'
+        assert len(first_photo.urls) >= MIN_URLS_PER_PHOTO
+
+        # Verificar segunda foto
+        second_photo = result.photos[1]
+        assert second_photo.id == 'img2'
+        assert second_photo.title == 'Photo 2'
+
+
+@pytest.mark.asyncio
+async def test_get_all_photos_by_id_with_n_prefix(service):
+    """Teste para album_id com prefixo 'n-'"""
+    album_id = 'n-ABC123'
+
+    mock_album_data = {
+        'Response': {
+            'Album': {
+                'AlbumKey': 'ABC123',
+                'Title': 'Test Album with n- prefix',
+                'ImageCount': 1,
+            }
+        }
+    }
+
+    mock_images_data = {
+        'Response': {
+            'AlbumImage': [
+                {
+                    'ImageKey': 'img1',
+                    'Title': 'Single Photo',
+                    'ThumbnailUrl': 'https://photos.smugmug.com/img1/Th/photo1-Th.jpg',
+                },
+            ]
+        }
+    }
+
+    def mock_make_request(url, params=None):
+        if 'album/ABC123!images' in url:
+            return mock_images_data
+        return mock_album_data
+
+    with patch.object(service, '_make_request', side_effect=mock_make_request):
+        result = await service.get_all_photos_by_id(album_id)
+
+        assert isinstance(result, AlbumResponse)
+        assert result.album_title == 'Test Album with n- prefix'
+        assert result.album_id == 'ABC123'  # Deve remover o prefixo 'n-'
+        assert result.total_photos == 1
+        assert len(result.photos) == 1
+
+
+@pytest.mark.asyncio
+async def test_get_all_photos_by_id_empty_album_id(service):
+    """Teste para album_id vazio"""
+    with pytest.raises(ValueError, match='ID do álbum não pode estar vazio'):
+        await service.get_all_photos_by_id('')
+
+    with pytest.raises(ValueError, match='ID do álbum não pode estar vazio'):
+        await service.get_all_photos_by_id('   ')
+
+
+@pytest.mark.asyncio
+async def test_get_all_photos_by_id_album_not_found(service):
+    """Teste para álbum não encontrado"""
+    album_id = 'INVALID123'
+
+    mock_response = Mock()
+    mock_response.status_code = HTTPStatus.NOT_FOUND
+
+    with patch.object(service.session, 'get', return_value=mock_response):
+        with pytest.raises(ValueError, match='Álbum não encontrado'):
+            await service.get_all_photos_by_id(album_id)
+
+
+@pytest.mark.asyncio
+async def test_get_all_photos_by_id_empty_album(service):
+    """Teste para álbum vazio (sem fotos)"""
+    album_id = 'EMPTY123'
+
+    mock_album_data = {
+        'Response': {
+            'Album': {
+                'AlbumKey': 'EMPTY123',
+                'Title': 'Empty Album',
+                'ImageCount': 0,
+            }
+        }
+    }
+
+    mock_images_data = {
+        'Response': {
+            'AlbumImage': []  # Lista vazia
+        }
+    }
+
+    def mock_make_request(url, params=None):
+        if 'album/EMPTY123!images' in url:
+            return mock_images_data
+        return mock_album_data
+
+    with patch.object(service, '_make_request', side_effect=mock_make_request):
+        result = await service.get_all_photos_by_id(album_id)
+
+        assert isinstance(result, AlbumResponse)
+        assert result.album_title == 'Empty Album'
+        assert result.album_id == 'EMPTY123'
+        assert result.total_photos == 0
+        assert len(result.photos) == 0

@@ -1,6 +1,6 @@
 import logging
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Path, Query
 from fastapi.middleware.cors import CORSMiddleware
 
 from .config import settings
@@ -31,7 +31,7 @@ async def root():
     return {
         'service': 'SmugMug Photo Extractor',
         'version': '1.0.0',
-        'endpoint': '/photos',
+        'endpoints': ['/photos', '/photos/{album_id}'],
     }
 
 
@@ -48,6 +48,26 @@ async def get_album_photos(
     try:
         logger.info(f'Extracting photos from: {url}')
         return await smugmug_service.get_all_photos(url)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f'Error: {e}')
+        raise HTTPException(status_code=500, detail='Erro interno')
+
+
+@app.get('/photos/{album_id}', response_model=AlbumResponse, tags=['Photos'])
+async def get_album_photos_by_id(
+    album_id: str = Path(..., description='ID do álbum SmugMug'),
+):
+    """
+    Extrair TODAS as fotos de um álbum SmugMug pelo ID do álbum
+    em todos os tamanhos disponíveis.
+
+    Exemplo: /photos/n-ABC123
+    """
+    try:
+        logger.info(f'Extracting photos from album ID: {album_id}')
+        return await smugmug_service.get_all_photos_by_id(album_id)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:

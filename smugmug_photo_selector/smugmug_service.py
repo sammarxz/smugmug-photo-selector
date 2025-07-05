@@ -190,3 +190,46 @@ class SmugMugService:
             total_photos=len(photos),
             photos=photos,
         )
+
+    async def get_all_photos_by_id(self, album_id: str) -> AlbumResponse:
+        """Obter todas as fotos de um álbum pelo ID"""
+        # Validar se o album_id tem formato válido
+        if not album_id or not album_id.strip():
+            raise ValueError('ID do álbum não pode estar vazio')
+
+        # Remover prefixo 'n-' se presente para normalizar
+        album_key = (
+            album_id.replace('n-', '')
+            if album_id.startswith('n-')
+            else album_id
+        )
+
+        # Obter info do álbum
+        album_url = f'{settings.SMUGMUG_API_BASE_URL}/album/{album_key}'
+        album_data = await self._make_request(album_url, {'_verbosity': '1'})
+
+        album_info = album_data['Response']['Album']
+        album_title = album_info.get('Title', 'Álbum sem título')
+        total_photos = album_info.get('ImageCount', 0)
+
+        # Obter todas as imagens
+        images_url = (
+            f'{settings.SMUGMUG_API_BASE_URL}/album/{album_key}!images'
+        )
+        params = {
+            '_verbosity': '2',
+            'count': total_photos or 5000,  # Pegar todas de uma vez
+        }
+
+        images_data = await self._make_request(images_url, params)
+        images = images_data.get('Response', {}).get('AlbumImage', [])
+
+        # Converter para Photo objects
+        photos = [self._convert_image_to_photo(img) for img in images]
+
+        return AlbumResponse(
+            album_title=album_title,
+            album_id=album_key,
+            total_photos=len(photos),
+            photos=photos,
+        )
