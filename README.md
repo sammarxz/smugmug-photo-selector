@@ -59,13 +59,7 @@ The API will be available at `http://localhost:8000`
 
 ### Using Docker Compose (Recommended)
 
-1. Create a `.env` file with your SmugMug credentials:
-```env
-SMUGMUG_API_KEY=your_api_key
-SMUGMUG_API_SECRET=your_api_secret
-SMUGMUG_ACCESS_TOKEN=your_access_token
-SMUGMUG_ACCESS_TOKEN_SECRET=your_access_token_secret
-```
+1. Create a `.env` file with your SmugMug credentials
 
 2. Build and run with Docker Compose:
 ```bash
