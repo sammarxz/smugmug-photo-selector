@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  smugmug-api:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - HOST=0.0.0.0
+      - PORT=8000
+      - RELOAD=false
+      - SMUGMUG_API_KEY=${SMUGMUG_API_KEY}
+      - SMUGMUG_API_SECRET=${SMUGMUG_API_SECRET}
+      - SMUGMUG_ACCESS_TOKEN=${SMUGMUG_ACCESS_TOKEN}
+      - SMUGMUG_ACCESS_TOKEN_SECRET=${SMUGMUG_ACCESS_TOKEN_SECRET}
+      - REQUEST_TIMEOUT=30
+      - MAX_RETRIES=3
+    volumes:
+      - ./scripts:/app/scripts:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s 
