@@ -32,3 +32,14 @@ class AlbumResponse(BaseModel):
     album_id: str
     total_photos: int
     photos: List[Photo]
+
+
+class AlbumInfo(BaseModel):
+    album_id: str
+    album_title: str
+    album_url: str
+    total_photos: int
+    privacy: Optional[str] = None
+    description: Optional[str] = None
+    date_created: Optional[str] = None
+    date_modified: Optional[str] = None

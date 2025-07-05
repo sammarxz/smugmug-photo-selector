@@ -85,74 +85,11 @@ docker run -p 8000:8000 \
 
 ## API Usage
 
-### Get Album Photos
-
-**Endpoint:** `GET /photos`
-
-**Query Parameters:**
-- `url` (required): SmugMug album URL
-
-**Example:**
-```bash
-curl "http://localhost:8000/photos?url=https://user.smugmug.com/album-name"
-```
-
-**Response:**
-```json
-{
-  "album_title": "My Album",
-  "album_id": "ABC123",
-  "total_photos": 10,
-  "photos": [
-    {
-      "id": "img1",
-      "title": "Photo 1",
-      "thumbnail_url": "https://photos.smugmug.com/img1/Th/photo1-Th.jpg",
-      "urls": [
-        {
-          "size": "Thumb",
-          "url": "https://photos.smugmug.com/img1/Th/photo1-Th.jpg"
-        },
-        {
-          "size": "Large",
-          "url": "https://photos.smugmug.com/img1/L/photo1-L.jpg"
-        },
-        {
-          "size": "Original",
-          "url": "https://photos.smugmug.com/img1/O/photo1-O.jpg"
-        }
-      ]
-    }
-  ]
-}
-```
-
 ### API Documentation
 
 Once the server is running, you can access:
 - **Swagger UI:** `http://localhost:8000/docs`
 - **ReDoc:** `http://localhost:8000/redoc`
-
-## Configuration
-
-The application uses environment variables for configuration. Create a `.env` file with:
-
-```env
-# Server settings
-HOST=0.0.0.0
-PORT=8000
-RELOAD=true
-
-# SmugMug API settings
-SMUGMUG_API_KEY=your_api_key
-SMUGMUG_API_SECRET=your_api_secret
-SMUGMUG_ACCESS_TOKEN=your_access_token
-SMUGMUG_ACCESS_TOKEN_SECRET=your_access_token_secret
-
-# Optional settings
-REQUEST_TIMEOUT=30
-MAX_RETRIES=3
-```
 
 ## Getting SmugMug API Credentials
 
@@ -199,16 +136,16 @@ poetry run ruff check --fix
 
 ```bash
 # Lint code
-poetry run task lint
+task lint
 
 # Format code
-poetry run task format
+task format
 
 # Run tests
-poetry run task test
+task test
 
 # Start development server
-poetry run task run
+task run
 ```
 
 ## Project Structure
@@ -227,30 +164,6 @@ smugmug-photo-selector/
 ├── pyproject.toml          # Poetry configuration
 └── README.md
 ```
-
-## API Models
-
-### AlbumResponse
-- `album_title`: Album title
-- `album_id`: SmugMug album ID
-- `total_photos`: Number of photos in album
-- `photos`: List of Photo objects
-
-### Photo
-- `id`: Photo ID
-- `title`: Photo title (optional)
-- `urls`: List of PhotoURL objects
-- `thumbnail_url`: Thumbnail URL (optional)
-
-### PhotoURL
-- `size`: Image size (Thumb, Small, Medium, Large, XLarge, X2Large, X3Large, Original)
-- `url`: Direct URL to the image
-
-## Error Handling
-
-The API returns appropriate HTTP status codes:
-- `400`: Bad request (invalid URL, album not found)
-- `500`: Internal server error
 
 ## License
 

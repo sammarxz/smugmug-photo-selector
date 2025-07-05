@@ -4,7 +4,7 @@ from fastapi import FastAPI, HTTPException, Path, Query
 from fastapi.middleware.cors import CORSMiddleware
 
 from .config import settings
-from .models import AlbumResponse
+from .models import AlbumInfo, AlbumResponse
 from .smugmug_service import SmugMugService
 
 logging.basicConfig(level=logging.INFO)
@@ -31,7 +31,7 @@ async def root():
     return {
         'service': 'SmugMug Photo Extractor',
         'version': '1.0.0',
-        'endpoints': ['/photos', '/photos/{album_id}'],
+        'endpoints': ['/photos', '/photos/{album_id}', '/info'],
     }
 
 
@@ -68,6 +68,26 @@ async def get_album_photos_by_id(
     try:
         logger.info(f'Extracting photos from album ID: {album_id}')
         return await smugmug_service.get_all_photos_by_id(album_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f'Error: {e}')
+        raise HTTPException(status_code=500, detail='Erro interno')
+
+
+@app.get('/info', response_model=AlbumInfo, tags=['Info'])
+async def get_album_info(
+    url: str = Query(..., description='URL do álbum SmugMug'),
+):
+    """
+    Obter informações básicas sobre um álbum SmugMug,
+    incluindo seu ID, título, número de fotos e outras informações.
+
+    Exemplo: /info?url=https://user.smugmug.com/album-name
+    """
+    try:
+        logger.info(f'Getting album info from: {url}')
+        return await smugmug_service.get_album_info(url)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:

@@ -3,12 +3,18 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from smugmug_photo_selector.models import AlbumResponse, ImageSize, Photo
+from smugmug_photo_selector.models import (
+    AlbumInfo,
+    AlbumResponse,
+    ImageSize,
+    Photo,
+)
 from smugmug_photo_selector.smugmug_service import SmugMugService
 
 EXPECTED_URLS_COUNT = 4
 MIN_URLS_PER_PHOTO = 2
 EXPECTED_TOTAL_PHOTOS = 3
+IMAGE_COUNT = 15
 
 
 @pytest.fixture
@@ -362,3 +368,82 @@ async def test_get_all_photos_by_id_empty_album(service):
         assert result.album_id == 'EMPTY123'
         assert result.total_photos == 0
         assert len(result.photos) == 0
+
+
+@pytest.mark.asyncio
+async def test_get_album_info_success(service):
+    """Teste de sucesso para get_album_info"""
+    url = 'https://user.smugmug.com/test-album/n-ABC123'
+
+    mock_album_data = {
+        'Response': {
+            'Album': {
+                'AlbumKey': 'ABC123',
+                'Title': 'Test Album Info',
+                'ImageCount': IMAGE_COUNT,
+                'Privacy': 'Public',
+                'Description': 'Um álbum de teste para verificar informações',
+                'DateCreated': '2024-01-15T10:30:00Z',
+                'DateModified': '2024-01-20T14:45:00Z',
+            }
+        }
+    }
+
+    with patch.object(service, '_make_request', return_value=mock_album_data):
+        result = await service.get_album_info(url)
+
+        assert isinstance(result, AlbumInfo)
+        assert result.album_id == 'ABC123'
+        assert result.album_title == 'Test Album Info'
+        assert result.album_url == 'https://www.smugmug.com/album/ABC123'
+        assert result.total_photos == IMAGE_COUNT
+        assert result.privacy == 'Public'
+        assert (
+            result.description
+            == 'Um álbum de teste para verificar informações'
+        )
+        assert result.date_created == '2024-01-15T10:30:00Z'
+        assert result.date_modified == '2024-01-20T14:45:00Z'
+
+
+@pytest.mark.asyncio
+async def test_get_album_info_minimal_data(service):
+    """Teste para álbum com dados mínimos"""
+    url = 'https://user.smugmug.com/minimal-album/n-MIN123'
+
+    mock_album_data = {
+        'Response': {
+            'Album': {
+                'AlbumKey': 'MIN123',
+                'Title': 'Minimal Album',
+                'ImageCount': 0,
+                # Sem privacy, description, dates
+            }
+        }
+    }
+
+    with patch.object(service, '_make_request', return_value=mock_album_data):
+        result = await service.get_album_info(url)
+
+        assert isinstance(result, AlbumInfo)
+        assert result.album_id == 'MIN123'
+        assert result.album_title == 'Minimal Album'
+        assert result.album_url == 'https://www.smugmug.com/album/MIN123'
+        assert result.total_photos == 0
+        assert result.privacy is None
+        assert result.description is None
+        assert result.date_created is None
+        assert result.date_modified is None
+
+
+@pytest.mark.asyncio
+async def test_get_album_info_album_not_found(service):
+    """Teste para álbum não encontrado na rota /info"""
+    url = 'https://user.smugmug.com/invalid-album'
+
+    mock_response = Mock()
+    mock_response.status_code = HTTPStatus.NOT_FOUND
+
+    with patch.object(service.session, 'get', return_value=mock_response):
+        with pytest.raises(ValueError, match='Álbum não encontrado'):
+            await service.get_album_info(url)

@@ -8,7 +8,7 @@ import requests
 from requests_oauthlib import OAuth1
 
 from .config import settings
-from .models import AlbumResponse, ImageSize, Photo, PhotoURL
+from .models import AlbumInfo, AlbumResponse, ImageSize, Photo, PhotoURL
 
 logger = logging.getLogger(__name__)
 
@@ -232,4 +232,28 @@ class SmugMugService:
             album_id=album_key,
             total_photos=len(photos),
             photos=photos,
+        )
+
+    async def get_album_info(self, url: str) -> AlbumInfo:
+        """Obter informações básicas de um álbum"""
+        album_key = await self._get_album_key(url)
+
+        # Obter info detalhada do álbum
+        album_url = f'{settings.SMUGMUG_API_BASE_URL}/album/{album_key}'
+        album_data = await self._make_request(album_url, {'_verbosity': '1'})
+
+        album_info = album_data['Response']['Album']
+
+        # Construir URL do álbum
+        album_url_web = f'https://www.smugmug.com/album/{album_key}'
+
+        return AlbumInfo(
+            album_id=album_key,
+            album_title=album_info.get('Title', 'Álbum sem título'),
+            album_url=album_url_web,
+            total_photos=album_info.get('ImageCount', 0),
+            privacy=album_info.get('Privacy'),
+            description=album_info.get('Description'),
+            date_created=album_info.get('DateCreated'),
+            date_modified=album_info.get('DateModified'),
         )
